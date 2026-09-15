@@ -1,0 +1,32 @@
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Generated Prisma client
+backend/src/generated/
+
+# Vercel local metadata
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Keys / certificates
+*.pem
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/

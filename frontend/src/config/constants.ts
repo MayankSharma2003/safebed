@@ -1,0 +1,1 @@
+export const TOTAL_BED=12;

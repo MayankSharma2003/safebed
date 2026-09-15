@@ -1,0 +1,183 @@
+# =======================================================
+# docker-compose.yml — sits at ROOT of your project
+# Wires together: frontend + backend + postgres
+# =======================================================
+#
+# PROJECT STRUCTURE ASSUMED:
+#   myapp/
+#   ├── frontend/         ← React app
+#   │   ├── Dockerfile
+#   │   └── nginx-frontend.conf
+#   ├── backend/          ← Express app
+#   │   └── Dockerfile
+#   ├── docker-compose.yml  ← THIS FILE
+#   └── .env              ← your secrets (never commit this)
+#
+
+services:
+
+  # ============================================================
+  # POSTGRES — your database
+  # ============================================================
+  postgres:
+    # Official Postgres 16 image on Alpine Linux (small)
+    image: postgres:16-alpine
+
+    # Container name — makes it easy to reference in commands
+    container_name: myapp_postgres
+
+    # Environment variables Postgres uses to create the database on first start
+    # These come from your .env file at the root
+    environment:
+      POSTGRES_DB: ${DB_NAME}           # database name
+      POSTGRES_USER: ${DB_USER}         # superuser username
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # superuser password
+
+    # Named volume — this is how Postgres data SURVIVES container restarts
+    # Without this, every time you do docker compose down, all data is lost
+    # With this: data lives in Docker's managed storage, persists forever
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Port mapping: host_port:container_port
+    # Lets you connect to Postgres from your laptop using a DB client
+    # (TablePlus, DBeaver, psql) at localhost:5432
+    # In production you would REMOVE this line (no need to expose DB to host)
+    ports:
+      - "5433:5432"
+
+    # Health check — other services wait for Postgres to be READY before starting
+    # pg_isready checks if Postgres is accepting connections
+    # Without this, backend might start before Postgres is ready and crash
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s       # check every 10 seconds
+      timeout: 5s         # give up after 5 seconds
+      retries: 5          # after 5 failures = unhealthy
+      start_period: 30s   # wait 30s before first check (Postgres needs time to init)
+
+    # Connect to our private network
+    networks:
+      - myapp_network
+
+    # Always restart if it crashes or server reboots
+    restart: unless-stopped
+
+  # ============================================================
+  # BACKEND — Node.js Express + TypeScript + Prisma
+  # ============================================================
+  backend:
+    # Build from Dockerfile in the backend/ folder
+    build:
+      context: ./backend    # Docker looks for Dockerfile here
+      dockerfile: Dockerfile
+
+    container_name: myapp_backend
+
+    # Environment variables available inside this container
+    # Reads from your .env file automatically
+    environment:
+      NODE_ENV: production
+
+      # DATABASE_URL: localhost → postgres
+      # "postgres" is the SERVICE NAME above — Docker DNS resolves it
+      # to the actual IP of the postgres container automatically
+      # Your Prisma client uses this to connect
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+
+      # Port your Express app listens on
+      PORT: ${PORT:-3001}
+
+      # Pass through any other env vars your app needs
+      # JWT secret, MQTT broker URL etc
+      # JWT_SECRET: ${JWT_SECRET}
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      MQTT_TOPIC: ${MQTT_TOPIC:-safebed/mayanksharma2003/mats/status}
+
+      # Add any other vars your app uses from .env here
+
+    # Expose port to host machine for local testing
+    # Lets you hit http://localhost:3001/api directly from your browser
+    # In production with NGINX in front, you can restrict this
+    ports:
+      - "3001:3001"
+      - "5555:5555"
+
+    # depends_on with condition: waits for postgres to be healthy
+    # before starting the backend
+    # Without this race condition: backend starts, tries to connect to DB,
+    # DB isn't ready yet, backend crashes
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    # Run Prisma migrations THEN start the server
+    # This ensures your DB schema is always up to date when app starts
+    # If migrations are already applied, prisma migrate deploy is a no-op
+    command: sh -c "npx prisma migrate deploy && node dist/server.js"
+
+    # Connect to shared network
+    networks:
+      - myapp_network
+
+    restart: unless-stopped
+
+    # Health check for the backend API
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================
+  # FRONTEND — Vite + React (built, served by NGINX inside container)
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: myapp_frontend
+
+    # Exposes React app on port 3000 of your HOST machine
+    # So you visit http://localhost:3000 in your browser
+    # Container's internal NGINX listens on 80, mapped to 3000 on host
+    ports:
+      - "3000:80"
+
+    # Frontend doesn't need to start before backend
+    # but practically nice to wait for backend to be healthy first
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    networks:
+      - myapp_network
+
+    restart: unless-stopped
+
+# ============================================================
+# VOLUMES — persistent storage
+# ============================================================
+volumes:
+  # postgres_data persists your database across container restarts
+  # Stored in Docker's managed area: /var/lib/docker/volumes/
+  # Run "docker volume ls" to see it
+  # Run "docker volume rm myapp_postgres_data" to wipe the database (careful!)
+  postgres_data:
+    name: myapp_postgres_data
+
+# ============================================================
+# NETWORKS — private communication between containers
+# ============================================================
+networks:
+  myapp_network:
+    # bridge = standard Docker network
+    # All containers on this network can reach each other by SERVICE NAME
+    # e.g. from backend container: http://frontend or postgres://postgres:5432
+    # None of this is reachable from outside Docker
+    driver: bridge
+    name: myapp_network

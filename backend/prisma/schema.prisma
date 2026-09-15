@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Esp {
+  id        Int @id @default(autoincrement())
+  espId    String 
+  matId String
+
+  esp_to_user_mapping  Esp_to_user_mapping[]
+}
+
+model Esp_to_user_mapping {
+  espId  Int @id
+  userId Int
+
+  users Users @relation(fields: [userId], references: [id])
+  esp   Esp   @relation(fields: [espId], references: [id])
+}
+
+model Users {
+  id       Int @id @default(autoincrement())
+  userName String
+  age      Int
+  gender   String
+  building String
+  floor    String
+  room     String
+  bed      String
+
+  alertLogs AlertLogs[]
+  bedActivity BedActivity[]
+  esp_to_user_mapping Esp_to_user_mapping[]
+}
+
+model AlertLogs {
+  id          Int      @id @default(autoincrement())
+  userId      Int      
+  time        DateTime @default(now())
+  actionTaken Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  
+  users       Users    @relation(fields: [userId], references: [id])
+
+}
+
+
+model BedActivity{
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  action      String
+  time        DateTime  @default(now())
+
+  users       Users     @relation(fields: [userId], references: [id])
+} 

@@ -462,8 +462,44 @@ const espData = [
   ["MAT-831", "esp32-ff818c69", 495],
 ];
 
+const DEMO_START = new Date("2026-09-15T00:00:00+09:00");
+
+function at(minutes: number) {
+  return new Date(DEMO_START.getTime() + minutes * 60 * 1000);
+}
+
+type Action = "LOW" | "HIGH";
+
+const GOOD_SCHEDULE: { minutes: number; action: Action }[] = [
+  { minutes: 0, action: "LOW" },       // 00:00
+  { minutes: 360, action: "HIGH" },    // 06:00
+  { minutes: 600, action: "LOW" },     // 10:00
+  { minutes: 1080, action: "HIGH" },   // 18:00
+];
+
+const MODERATE_SCHEDULE: { minutes: number; action: Action }[] = [
+  { minutes: 0, action: "LOW" },       // 00:00
+  { minutes: 240, action: "HIGH" },    // 04:00
+  { minutes: 600, action: "LOW" },     // 10:00
+  { minutes: 960, action: "HIGH" },    // 16:00
+];
+
+const POOR_SCHEDULE: { minutes: number; action: Action }[] = [
+  { minutes: 0, action: "LOW" },       // 00:00
+  { minutes: 180, action: "HIGH" },    // 03:00
+  { minutes: 660, action: "LOW" },     // 11:00
+  { minutes: 960, action: "HIGH" },    // 16:00
+];
+
 async function main() {
   console.log("🌱 Seeding database...");
+
+  await prisma.alertLogs.deleteMany();
+await prisma.bedActivity.deleteMany();
+await prisma.esp_to_user_mapping.deleteMany();
+await prisma.esp.deleteMany();
+
+console.log("✅ Old demo activity cleared");
 
   /* ---------------------------------------------------------------------- */
   /*                               USERS                                    */
@@ -514,121 +550,74 @@ async function main() {
   /* ---------------------------------------------------------------------- */
   /*                      ACTIVITY / ALERT (UNCHANGED)                      */
   /* ---------------------------------------------------------------------- */
+const users = await prisma.users.findMany({
+  orderBy: { id: "asc" },
+});
 
-  const users = await prisma.users.findMany();
+const bedActivities: {
+  userId: number;
+  action: string;
+  time: Date;
+}[] = [];
 
-  const now = new Date();
-  const jstNow = new Date(now.getTime() + JST_OFFSET);
+const alertLogs: {
+  userId: number;
+  time: Date;
+  actionTaken: boolean;
+  updatedAt: Date;
+}[] = [];
 
-  const baseStart = new Date(jstNow);
-  baseStart.setHours(0, 0, 0, 0);
+for (const user of users) {
+  let schedule;
 
-  const bedActivities: any[] = [];
-  const alertLogs: any[] = [];
-
-  for (const user of users) {
-    let current = new Date(baseStart);
-
-    current.setHours(
-      faker.number.int({ min: 7, max: 10 }),
-      faker.number.int({ min: 0, max: 59 }),
-      0,
-      0
-    );
-
-    const push = (action: "HIGH" | "LOW", time: Date) => {
-      const utcTime = toUTC(time);
-
-      bedActivities.push({
-        userId: user.id,
-        action,
-        time: utcTime,
-      });
-
-      if (action === "HIGH") {
-        const actionTaken = faker.datatype.boolean(0.7);
-
-        alertLogs.push({
-          userId: user.id,
-          time: utcTime,
-          actionTaken,
-          updatedAt: actionTaken
-            ? new Date(utcTime.getTime() + 60000)
-            : utcTime,
-        });
-      }
-    };
-
-    push("LOW", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 120, max: 240 }) * 60000
-    );
-    push("HIGH", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 15, max: 30 }) * 60000
-    );
-    push("LOW", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 200, max: 360 }) * 60000
-    );
-    push("HIGH", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 50, max: 80 }) * 60000
-    );
-    push("LOW", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 70, max: 100 }) * 60000
-    );
-    push("HIGH", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 240, max: 360 }) * 60000
-    );
-    push("LOW", current);
-
-    current = new Date(
-      current.getTime() +
-        faker.number.int({ min: 30, max: 60 }) * 60000
-    );
-    push("HIGH", current);
-
-    if (faker.datatype.boolean(0.35)) {
-      let extra = new Date(current);
-      const cycles = faker.number.int({ min: 2, max: 6 });
-
-      for (let i = 0; i < cycles; i++) {
-        extra = new Date(
-          extra.getTime() +
-            faker.number.int({ min: 20, max: 90 }) * 60000
-        );
-
-        push(i % 2 === 0 ? "LOW" : "HIGH", extra);
-      }
-    }
+  if (user.id >= 484 && user.id <= 487) {
+    schedule = GOOD_SCHEDULE;
+  } else if (user.id >= 488 && user.id <= 491) {
+    schedule = MODERATE_SCHEDULE;
+  } else {
+    schedule = POOR_SCHEDULE;
   }
 
-  await prisma.bedActivity.createMany({
-    data: bedActivities,
-  });
+  let alertNumber = 0;
 
-  await prisma.alertLogs.createMany({
-    data: alertLogs,
-  });
+  for (const item of schedule) {
+    const time = at(item.minutes);
 
-  console.log("✅ BedActivity seeded");
-  console.log("✅ AlertLogs seeded");
-  console.log("🎉 Done");
+    bedActivities.push({
+      userId: user.id,
+      action: item.action,
+      time,
+    });
+
+    if (item.action === "HIGH") {
+      const actionTaken =
+        (user.id + alertNumber) % 2 === 0;
+
+      alertLogs.push({
+        userId: user.id,
+        time,
+        actionTaken,
+        updatedAt: actionTaken
+          ? new Date(time.getTime() + 5 * 60 * 1000)
+          : time,
+      });
+
+      alertNumber++;
+    }
+  }
+}
+
+await prisma.bedActivity.createMany({
+  data: bedActivities,
+});
+
+await prisma.alertLogs.createMany({
+  data: alertLogs,
+});
+
+console.log(`✅ BedActivity seeded: ${bedActivities.length}`);
+console.log(`✅ AlertLogs seeded: ${alertLogs.length}`);
+console.log("🎉 Demo date: 2026-09-15");
 }
 
 main()

@@ -60,11 +60,11 @@ const AlertTable = observer(({ alerts, bedsStore, page, total, pageSize, onPageC
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right font-mono text-sm text-slate-500">
-                                        {new Date(alert.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: "2-digit" })}
+                                        {new Date(alert.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: "2-digit" ,timeZone: "Asia/Tokyo"})}
                                     </td>
                                     <td className="px-6 py-4 text-right font-mono text-sm text-slate-400">
                                         {alert.updatedAt !== alert.time 
-                                            ? new Date(alert.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: "2-digit" }) 
+                                            ? new Date(alert.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: "2-digit" ,timeZone: "Asia/Tokyo"}) 
                                             : "—"}
                                     </td>
                                 </tr>

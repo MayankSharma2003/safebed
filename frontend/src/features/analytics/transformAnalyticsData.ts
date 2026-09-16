@@ -15,11 +15,8 @@ export const transformAnalyticsData = (
 ): AnalyticsRow[] => {
     const result: AnalyticsRow[] = [];
 
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
+const dayStart = new Date(`${date}T00:00:00+09:00`);
+const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
     const now = new Date();
     const isToday = now.toISOString().split("T")[0] === date;

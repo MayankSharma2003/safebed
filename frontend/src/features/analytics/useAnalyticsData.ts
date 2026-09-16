@@ -7,7 +7,9 @@ import { groupBySleepQuality } from "./groupBySleepQuality";
 export const useAnalyticsData = () => {
     const { bedsStore } = useStore();
     const [bedLogs, setBedLogs] = useState<Awaited<ReturnType<typeof getBedLogs>>>([]);
-    const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+    // const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+        const [date, setDate] = useState('2026-09-15');
+
 
     useEffect(() => {
         bedsStore.loadBeds();

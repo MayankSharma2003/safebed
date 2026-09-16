@@ -6,13 +6,27 @@ type ChartItem = {
   value: [string, number, number, string, string | null, string | null];
 };
 
+// function convertToISO(dateStr: string, timeStr: string) {
+//   const [hours, minutes] = timeStr.split(":").map(Number);
+
+//   const date = new Date(dateStr);
+//   date.setHours(hours, minutes, 0, 0);
+
+//   return date.toISOString();
+// }
+
 function convertToISO(dateStr: string, timeStr: string) {
-  const [hours, minutes] = timeStr.split(":").map(Number);
+  return new Date(`${dateStr}T${timeStr}:00+09:00`).toISOString();
+}
 
-  const date = new Date(dateStr);
-  date.setHours(hours, minutes, 0, 0);
+function getJstHour(dateValue: string | Date) {
+  const date = new Date(dateValue);
 
-  return date.toISOString();
+  const jst = new Date(
+    date.getTime() + 9 * 60 * 60 * 1000
+  );
+
+  return jst.getUTCHours() + jst.getUTCMinutes() / 60;
 }
 
 export const transformToChartData = (
@@ -43,12 +57,10 @@ export const transformToChartData = (
     const bedName = `${user.userName.toUpperCase()} - ${user.bed.toUpperCase()}`
 
     const first = userLogs[0];
-    const firstTime = new Date(first.time);
+    // const firstTime = new Date(first.time);
 
     const start_time = convertToISO(first.time.split("T")[0], "00:00")
-
-    const firstHour =
-      firstTime.getHours() + firstTime.getMinutes() / 60;
+const firstHour = getJstHour(first.time);
 
     const initialAction =
       first.action === "HIGH" ? "On bed" : "Not on bed";
@@ -77,16 +89,17 @@ export const transformToChartData = (
       const current = userLogs[i];
       const next = userLogs[i + 1];
 
-      const start = new Date(current.time);
+      // const start = new Date(current.time);
       const end = next ? new Date(next.time) : null;
       const now = new Date();
 
-      const startHour =
-        start.getHours() + start.getMinutes() / 60;
+const startHour = getJstHour(current.time);
 
-      const endHour = end
-        ? end.getHours() + end.getMinutes() / 60
-        : (now.toISOString().split("T")[0] == date) ? now.getHours() + now.getMinutes() / 60 : 24;
+const endHour = end
+  ? getJstHour(next.time)
+  : (now.toISOString().split("T")[0] === date)
+    ? getJstHour(now)
+    : 24;
 
       const actionLabel =
         current.action === "HIGH" ? "Not on bed" : "On bed";

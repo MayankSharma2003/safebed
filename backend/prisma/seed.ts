@@ -1,328 +1,24 @@
-// import prisma from "../src/libs/db";
-// import { faker } from "@faker-js/faker";
-
-// const START_ESP_NUMBER = 58;
-
-// const JST_OFFSET = 9 * 60 * 60 * 1000;
-
-// function toUTC(date: Date) {
-//   return new Date(date.getTime() - JST_OFFSET);
-// }
-
-// async function main() {
-//   console.log("🌱 Seeding started...");
-
-//   await prisma.alertLogs.deleteMany();
-//   await prisma.bedActivity.deleteMany();
-//   await prisma.esp_to_user_mapping.deleteMany();
-//   await prisma.esp.deleteMany();
-//   await prisma.users.deleteMany();
-
-//   // -------------------------
-//   // 👤 USERS
-//   // -------------------------
-//   const users = [];
-
-//   const roomStructure = [
-//     { floor: "1", rooms: ["101", "102", "103"] },
-//     { floor: "2", rooms: ["201", "202", "203"] },
-//   ];
-
-//   let bedCounter = 1;
-
-//   for (const floorData of roomStructure) {
-//     for (const room of floorData.rooms) {
-//       for (let i = 0; i < 2; i++) {
-//         const user = await prisma.users.create({
-//           data: {
-//             userName: faker.person.fullName(),
-//             age: faker.number.int({ min: 60, max: 95 }),
-//             gender: faker.helpers.arrayElement(["Male", "Female"]),
-//             building: "B-1",
-//             floor: floorData.floor,
-//             room,
-//             bed: `BED-${bedCounter}`,
-//           },
-//         });
-
-//         users.push(user);
-//         bedCounter++;
-//       }
-//     }
-//   }
-
-//   console.log(`✅ Users created: ${users.length}`);
-
-//   // -------------------------
-//   // 📡 ESP Mapping
-//   // -------------------------
-//   for (let i = 0; i < users.length; i++) {
-//     const esp = await prisma.esp.create({
-//       data: {
-//         espId: `esp32-ff818c${START_ESP_NUMBER + i}`,
-//         matId: `MAT-${faker.number.int({ min: 100, max: 999 })}`,
-//       },
-//     });
-
-//     await prisma.esp_to_user_mapping.create({
-//       data: {
-//         espId: esp.id,
-//         userId: users[i].id,
-//       },
-//     });
-//   }
-
-//   console.log("✅ ESP mapping done");
-
-// // -------------------------
-// // 🧠 USER PATTERN (MATCH SAMPLE DATA)
-// // -------------------------
-
-// const now = new Date();
-// const jstNow = new Date(now.getTime() + JST_OFFSET);
-
-// const baseStart = new Date(jstNow);
-// baseStart.setDate(baseStart.getDate() - 1);
-
-// const bedActivities: any[] = [];
-// const alertLogs: any[] = [];
-
-// for (const user of users) {
-//   // Each user gets DIFFERENT start time (13:30–15:30)
-//   let current = new Date(baseStart);
-//   current.setHours(
-//     faker.number.int({ min: 7, max:  10}),
-//     faker.number.int({ min: 0, max: 59 }),
-//     0,
-//     0
-//   );
-
-//   let isHigh = false;
-
-//   const push = (action: "HIGH" | "LOW", time: Date) => {
-//     const utcTime = toUTC(time);
-
-//     bedActivities.push({
-//       userId: user.id,
-//       action,
-//       time: utcTime,
-//     });
-
-//     if (action === "HIGH") {
-//       const actionTaken = faker.datatype.boolean(0.7);
-
-//       alertLogs.push({
-//         userId: user.id,
-//         time: utcTime,
-//         actionTaken,
-//         updatedAt: actionTaken
-//           ? new Date(utcTime.getTime() + 5 * 60000)
-//           : utcTime,
-//       });
-//     }
-//   };
-
-//   // 1️⃣ START LOW (afternoon)
-//   push("LOW", current);
-
-//   // 2️⃣ HIGH after 2–4 hrs
-//   current = new Date(current.getTime() + faker.number.int({ min: 120, max: 240 }) * 60000);
-//   push("HIGH", current);
-
-//   // 3️⃣ LOW after short break
-//   current = new Date(current.getTime() + faker.number.int({ min: 15, max: 30 }) * 60000);
-//   push("LOW", current);
-
-//   // 4️⃣ HIGH evening
-//   current = new Date(current.getTime() + faker.number.int({ min: 200, max: 360 }) * 60000);
-//   push("HIGH", current);
-
-//     current = new Date(current.getTime() + faker.number.int({ min: 50, max: 80 }) * 60000);
-//     push("LOW", current);
-
-//         current = new Date(current.getTime() + faker.number.int({ min: 70, max: 100 }) * 60000);
-//     push("HIGH", current);
-
-//   // 5️⃣ LOW sleep (long gap)
-//   current = new Date(current.getTime() + faker.number.int({ min: 240, max: 360 }) * 60000);
-//   push("LOW", current);
-
-//   // 6️⃣ FINAL HIGH (natural wake — no fixed hour)
-//   current = new Date(current.getTime() + faker.number.int({ min: 30, max: 60 }) * 60000);
-//   push("HIGH", current);
-
-//   // 7️⃣ OPTIONAL: complex users (like 103,105)
-//   if (faker.datatype.boolean(0.35)) {
-//     let extra = new Date(current);
-
-//     const cycles = faker.number.int({ min: 2, max: 6 });
-
-//     for (let i = 0; i < cycles; i++) {
-//       extra = new Date(extra.getTime() + faker.number.int({ min: 20, max: 90 }) * 60000);
-
-//       const action = i % 2 === 0 ? "LOW" : "HIGH";
-//       push(action, extra);
-//     }
-//   }
-// }
-
-//   console.log(`📊 BedActivity: ${bedActivities.length}`);
-//   console.log(`🚨 AlertLogs: ${alertLogs.length}`);
-
-//   // -------------------------
-//   // ⚡ INSERT
-//   // -------------------------
-//   await prisma.bedActivity.createMany({ data: bedActivities });
-//   await prisma.alertLogs.createMany({ data: alertLogs });
-
-//   console.log("✅ Done");
-// }
-
-// main()
-//   .catch(console.error)
-//   .finally(() => prisma.$disconnect());
-
-// import prisma from "../src/libs/db";
-// import { faker } from "@faker-js/faker";
-
-// const JST_OFFSET = 9 * 60 * 60 * 1000;
-
-// function toUTC(date: Date) {
-//   return new Date(date.getTime() - JST_OFFSET);
-// }
-
-// async function main() {
-//   console.log("🌱 Generating new activity logs (Append Mode)...");
-
-//   // --- STEP 1: Fetch existing users from DB ---
-//   // We don't delete them; we find the ones already mapped to ESPs.
-//   const users = await prisma.users.findMany();
-
-//   if (users.length === 0) {
-//     console.error("❌ No users found. Please run your initial setup once first.");
-//     return;
-//   }
-
-//   // --- STEP 2: Clear ONLY the logs for the CURRENT run if you want a clean TODAY, 
-//   // OR just leave this commented out to keep every single log forever.
-//   // await prisma.alertLogs.deleteMany(); 
-//   // await prisma.bedActivity.deleteMany();
-
-//   const now = new Date();
-//   const jstNow = new Date(now.getTime() + JST_OFFSET);
-
-//   const baseStart = new Date(jstNow);
-//   baseStart.setHours(0, 0, 0, 0); 
-
-//   const bedActivities: any[] = [];
-//   const alertLogs: any[] = [];
-
-//   for (const user of users) {
-//     // --- YOUR ORIGINAL PATTERN LOGIC START ---
-    
-//     // Each user gets DIFFERENT start time (07:00–10:00)
-//     let current = new Date(baseStart);
-//     current.setHours(
-//       faker.number.int({ min: 7, max: 10 }),
-//       faker.number.int({ min: 0, max: 59 }),
-//       0,
-//       0
-//     );
-
-//     const push = (action: "HIGH" | "LOW", time: Date) => {
-//       const utcTime = toUTC(time);
-
-//       bedActivities.push({
-//         userId: user.id, // Links to your existing fixed User ID
-//         action,
-//         time: utcTime,
-//       });
-
-//       if (action === "HIGH") {
-//         const actionTaken = faker.datatype.boolean(0.7);
-
-//         alertLogs.push({
-//           userId: user.id,
-//           time: utcTime,
-//           actionTaken,
-//           updatedAt: actionTaken
-//             ? new Date(utcTime.getTime() + 1 * 60000)
-//             : utcTime,
-//         });
-//       }
-//     };
-
-//     // 1️⃣ START LOW (morning/afternoon)
-//     push("LOW", current);
-
-//     // 2️⃣ HIGH after 2–4 hrs
-//     current = new Date(current.getTime() + faker.number.int({ min: 120, max: 240 }) * 60000);
-//     push("HIGH", current);
-
-//     // 3️⃣ LOW after short break
-//     current = new Date(current.getTime() + faker.number.int({ min: 15, max: 30 }) * 60000);
-//     push("LOW", current);
-
-//     // 4️⃣ HIGH evening
-//     current = new Date(current.getTime() + faker.number.int({ min: 200, max: 360 }) * 60000);
-//     push("HIGH", current);
-
-//     current = new Date(current.getTime() + faker.number.int({ min: 50, max: 80 }) * 60000);
-//     push("LOW", current);
-
-//     current = new Date(current.getTime() + faker.number.int({ min: 70, max: 100 }) * 60000);
-//     push("HIGH", current);
-
-//     // 5️⃣ LOW sleep (long gap)
-//     current = new Date(current.getTime() + faker.number.int({ min: 240, max: 360 }) * 60000);
-//     push("LOW", current);
-
-//     // 6️⃣ FINAL HIGH (natural wake)
-//     current = new Date(current.getTime() + faker.number.int({ min: 30, max: 60 }) * 60000);
-//     push("HIGH", current);
-
-//     // 7️⃣ OPTIONAL: complex users
-//     if (faker.datatype.boolean(0.35)) {
-//       let extra = new Date(current);
-//       const cycles = faker.number.int({ min: 2, max: 6 });
-
-//       for (let i = 0; i < cycles; i++) {
-//         extra = new Date(extra.getTime() + faker.number.int({ min: 20, max: 90 }) * 60000);
-//         const action = i % 2 === 0 ? "LOW" : "HIGH";
-//         push(action, extra);
-//       }
-//     }
-//     // --- YOUR ORIGINAL PATTERN LOGIC END ---
-//   }
-
-//   console.log(`📊 Creating ${bedActivities.length} new BedActivity records...`);
-//   console.log(`🚨 Creating ${alertLogs.length} new AlertLogs records...`);
-
-//   // --- STEP 3: INSERT ONLY ---
-//   // We use createMany to add new rows while keeping the old ones.
-//   await prisma.bedActivity.createMany({ data: bedActivities });
-//   await prisma.alertLogs.createMany({ data: alertLogs });
-
-//   console.log("✅ Daily append completed successfully.");
-// }
-
-// main()
-//   .catch(console.error)
-//   .finally(() => prisma.$disconnect());
-
-
 import prisma from "../src/libs/db";
-import { faker } from "@faker-js/faker";
 
-const JST_OFFSET = 9 * 60 * 60 * 1000;
+const DEMO_DATE = "2026-09-15";
 
-function toUTC(date: Date) {
-  return new Date(date.getTime() - JST_OFFSET);
-}
+type Action = "LOW" | "HIGH";
 
-/* -------------------------------------------------------------------------- */
-/*                                  MASTER DATA                               */
-/* -------------------------------------------------------------------------- */
+type ScheduleEntry = {
+  time: string;
+  action: Action;
+};
+
+/*
+  LOW  = On bed
+  HIGH = Not on bed
+
+  Every schedule:
+  - starts at 00:00
+  - alternates LOW/HIGH throughout the day
+  - finishes naturally at 24:00
+  - totals exactly 24 hours
+*/
 
 const usersData = [
   {
@@ -447,7 +143,7 @@ const usersData = [
   },
 ];
 
-const espData = [
+const espData: [string, string, number][] = [
   ["MAT-837", "esp32-ff818c58", 484],
   ["MAT-254", "esp32-ff818c59", 485],
   ["MAT-680", "esp32-ff818c60", 486],
@@ -462,166 +158,328 @@ const espData = [
   ["MAT-831", "esp32-ff818c69", 495],
 ];
 
-const DEMO_START = new Date("2026-09-15T00:00:00+09:00");
+/*
+  GOOD
+  ----
+  BED-1 = 15h30m on bed
+  BED-2 = 14h
+  BED-3 = 13h
+  BED-4 = 12h
+*/
 
-function at(minutes: number) {
-  return new Date(DEMO_START.getTime() + minutes * 60 * 1000);
+const schedules: Record<number, ScheduleEntry[]> = {
+  484: [
+    { time: "00:00", action: "LOW" },
+    { time: "06:30", action: "HIGH" },
+    { time: "07:30", action: "LOW" },
+    { time: "09:30", action: "HIGH" },
+    { time: "12:30", action: "LOW" },
+    { time: "14:00", action: "HIGH" },
+    { time: "16:30", action: "LOW" },
+    { time: "18:00", action: "HIGH" },
+    { time: "20:00", action: "LOW" },
+  ],
+
+  485: [
+    { time: "00:00", action: "LOW" },
+    { time: "06:00", action: "HIGH" },
+    { time: "07:00", action: "LOW" },
+    { time: "08:30", action: "HIGH" },
+    { time: "12:00", action: "LOW" },
+    { time: "13:30", action: "HIGH" },
+    { time: "15:30", action: "LOW" },
+    { time: "17:00", action: "HIGH" },
+    { time: "20:30", action: "LOW" },
+  ],
+
+  486: [
+    { time: "00:00", action: "LOW" },
+    { time: "05:30", action: "HIGH" },
+    { time: "06:30", action: "LOW" },
+    { time: "08:00", action: "HIGH" },
+    { time: "11:00", action: "LOW" },
+    { time: "12:30", action: "HIGH" },
+    { time: "14:30", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "21:00", action: "LOW" },
+  ],
+
+  487: [
+    { time: "00:00", action: "LOW" },
+    { time: "05:00", action: "HIGH" },
+    { time: "06:00", action: "LOW" },
+    { time: "07:00", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:30", action: "HIGH" },
+    { time: "14:00", action: "LOW" },
+    { time: "15:30", action: "HIGH" },
+    { time: "21:00", action: "LOW" },
+  ],
+
+  /*
+    MODERATE
+    --------
+    BED-5 = 10h30m
+    BED-6 = 10h
+    BED-7 = 9h30m
+    BED-8 = 9h
+  */
+
+  488: [
+    { time: "00:00", action: "LOW" },
+    { time: "04:30", action: "HIGH" },
+    { time: "06:00", action: "LOW" },
+    { time: "07:00", action: "HIGH" },
+    { time: "11:00", action: "LOW" },
+    { time: "12:00", action: "HIGH" },
+    { time: "15:00", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "21:00", action: "LOW" },
+  ],
+
+  489: [
+    { time: "00:00", action: "LOW" },
+    { time: "04:00", action: "HIGH" },
+    { time: "05:30", action: "LOW" },
+    { time: "06:30", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:00", action: "HIGH" },
+    { time: "14:00", action: "LOW" },
+    { time: "15:00", action: "HIGH" },
+    { time: "21:00", action: "LOW" },
+  ],
+
+  490: [
+    { time: "00:00", action: "LOW" },
+    { time: "04:00", action: "HIGH" },
+    { time: "06:00", action: "LOW" },
+    { time: "07:00", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:00", action: "HIGH" },
+    { time: "15:00", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "21:30", action: "LOW" },
+  ],
+
+  491: [
+    { time: "00:00", action: "LOW" },
+    { time: "03:30", action: "HIGH" },
+    { time: "05:00", action: "LOW" },
+    { time: "06:00", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:00", action: "HIGH" },
+    { time: "15:00", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "21:30", action: "LOW" },
+  ],
+
+  /*
+    POOR
+    ----
+    BED-9  = 8h
+    BED-10 = 7h30m
+    BED-11 = 7h
+    BED-12 = 6h30m
+  */
+
+  492: [
+    { time: "00:00", action: "LOW" },
+    { time: "03:00", action: "HIGH" },
+    { time: "05:00", action: "LOW" },
+    { time: "06:00", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:00", action: "HIGH" },
+    { time: "15:00", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "22:00", action: "LOW" },
+  ],
+
+  493: [
+    { time: "00:00", action: "LOW" },
+    { time: "03:00", action: "HIGH" },
+    { time: "05:30", action: "LOW" },
+    { time: "06:30", action: "HIGH" },
+    { time: "11:00", action: "LOW" },
+    { time: "12:00", action: "HIGH" },
+    { time: "16:00", action: "LOW" },
+    { time: "17:00", action: "HIGH" },
+    { time: "22:30", action: "LOW" },
+  ],
+
+  494: [
+    { time: "00:00", action: "LOW" },
+    { time: "02:30", action: "HIGH" },
+    { time: "05:00", action: "LOW" },
+    { time: "06:00", action: "HIGH" },
+    { time: "10:00", action: "LOW" },
+    { time: "11:00", action: "HIGH" },
+    { time: "15:00", action: "LOW" },
+    { time: "16:00", action: "HIGH" },
+    { time: "22:30", action: "LOW" },
+  ],
+
+  495: [
+    { time: "00:00", action: "LOW" },
+    { time: "02:30", action: "HIGH" },
+    { time: "05:30", action: "LOW" },
+    { time: "06:30", action: "HIGH" },
+    { time: "11:00", action: "LOW" },
+    { time: "12:00", action: "HIGH" },
+    { time: "16:00", action: "LOW" },
+    { time: "17:00", action: "HIGH" },
+    { time: "23:00", action: "LOW" },
+  ],
+};
+
+function demoTime(time: string): Date {
+  return new Date(`${DEMO_DATE}T${time}:00+09:00`);
 }
 
-type Action = "LOW" | "HIGH";
-
-const GOOD_SCHEDULE: { minutes: number; action: Action }[] = [
-  { minutes: 0, action: "LOW" },       // 00:00
-  { minutes: 360, action: "HIGH" },    // 06:00
-  { minutes: 600, action: "LOW" },     // 10:00
-  { minutes: 1080, action: "HIGH" },   // 18:00
-];
-
-const MODERATE_SCHEDULE: { minutes: number; action: Action }[] = [
-  { minutes: 0, action: "LOW" },       // 00:00
-  { minutes: 240, action: "HIGH" },    // 04:00
-  { minutes: 600, action: "LOW" },     // 10:00
-  { minutes: 960, action: "HIGH" },    // 16:00
-];
-
-const POOR_SCHEDULE: { minutes: number; action: Action }[] = [
-  { minutes: 0, action: "LOW" },       // 00:00
-  { minutes: 180, action: "HIGH" },    // 03:00
-  { minutes: 660, action: "LOW" },     // 11:00
-  { minutes: 960, action: "HIGH" },    // 16:00
-];
-
 async function main() {
-  console.log("🌱 Seeding database...");
+  console.log("🌱 Resetting SafeBed demo database...");
 
+  /*
+    Clear demo data in dependency-safe order.
+    This prevents duplicate ESPs/mappings and duplicate logs
+    when the seed is run again.
+  */
   await prisma.alertLogs.deleteMany();
-await prisma.bedActivity.deleteMany();
-await prisma.esp_to_user_mapping.deleteMany();
-await prisma.esp.deleteMany();
+  await prisma.bedActivity.deleteMany();
+  await prisma.esp_to_user_mapping.deleteMany();
+  await prisma.esp.deleteMany();
+  await prisma.users.deleteMany();
 
-console.log("✅ Old demo activity cleared");
+  console.log("✅ Previous demo data cleared");
 
-  /* ---------------------------------------------------------------------- */
-  /*                               USERS                                    */
-  /* ---------------------------------------------------------------------- */
-//   await prisma.$executeRawUnsafe(`
-// TRUNCATE TABLE
-// "AlertLogs",
-// "BedActivity"
-// `);
+  /*
+    Users
+  */
+  await prisma.users.createMany({
+    data: usersData,
+  });
 
-  for (const user of usersData) {
-    await prisma.users.upsert({
-      where: { id: user.id },
-      update: {},
-      create: user,
-    });
-  }
+  console.log(`✅ Users seeded: ${usersData.length}`);
 
-  console.log("✅ Users seeded");
-
-  /* ---------------------------------------------------------------------- */
-  /*                                 ESP                                    */
-  /* ---------------------------------------------------------------------- */
-
-
+  /*
+    ESP + user mapping
+  */
   for (const [matId, espId, userId] of espData) {
     const esp = await prisma.esp.create({
       data: {
-        matId : matId as string,
-        espId : espId as string,
+        matId,
+        espId,
       },
     });
 
-    await prisma.esp_to_user_mapping.upsert({
-      where: {
+    await prisma.esp_to_user_mapping.create({
+      data: {
         espId: esp.id,
-      },
-      update: {},
-      create: {
-        espId: esp.id,
-        userId : userId as number,
+        userId,
       },
     });
   }
 
-  console.log("✅ ESP & Mapping seeded");
+  console.log(`✅ ESP mappings seeded: ${espData.length}`);
 
-  /* ---------------------------------------------------------------------- */
-  /*                      ACTIVITY / ALERT (UNCHANGED)                      */
-  /* ---------------------------------------------------------------------- */
-const users = await prisma.users.findMany({
-  orderBy: { id: "asc" },
-});
+  /*
+    Activity + alerts
+  */
+  const bedActivities: {
+    userId: number;
+    action: string;
+    time: Date;
+  }[] = [];
 
-const bedActivities: {
-  userId: number;
-  action: string;
-  time: Date;
-}[] = [];
+  const alertLogs: {
+    userId: number;
+    time: Date;
+    actionTaken: boolean;
+    updatedAt: Date;
+  }[] = [];
 
-const alertLogs: {
-  userId: number;
-  time: Date;
-  actionTaken: boolean;
-  updatedAt: Date;
-}[] = [];
+  for (const user of usersData) {
+    const schedule = schedules[user.id];
 
-for (const user of users) {
-  let schedule;
+    if (!schedule) {
+      throw new Error(`Missing schedule for user ${user.id}`);
+    }
 
-  if (user.id >= 484 && user.id <= 487) {
-    schedule = GOOD_SCHEDULE;
-  } else if (user.id >= 488 && user.id <= 491) {
-    schedule = MODERATE_SCHEDULE;
-  } else {
-    schedule = POOR_SCHEDULE;
-  }
+    let highIndex = 0;
 
-  let alertNumber = 0;
+    for (const entry of schedule) {
+      const time = demoTime(entry.time);
 
-  for (const item of schedule) {
-    const time = at(item.minutes);
-
-    bedActivities.push({
-      userId: user.id,
-      action: item.action,
-      time,
-    });
-
-    if (item.action === "HIGH") {
-      const actionTaken =
-        (user.id + alertNumber) % 2 === 0;
-
-      alertLogs.push({
+      bedActivities.push({
         userId: user.id,
+        action: entry.action,
         time,
-        actionTaken,
-        updatedAt: actionTaken
-          ? new Date(time.getTime() + 5 * 60 * 1000)
-          : time,
       });
 
-      alertNumber++;
+      /*
+        Every HIGH transition represents leaving the bed,
+        therefore it also produces an alert.
+      */
+      if (entry.action === "HIGH") {
+        /*
+          Every patient has a mixture of handled and
+          unhandled alerts for a more realistic demo.
+        */
+        const actionTaken = highIndex !== 1;
+
+        alertLogs.push({
+          userId: user.id,
+          time,
+          actionTaken,
+          updatedAt: actionTaken
+            ? new Date(time.getTime() + 5 * 60 * 1000)
+            : time,
+        });
+
+        highIndex++;
+      }
     }
   }
-}
 
-await prisma.bedActivity.createMany({
-  data: bedActivities,
-});
+  await prisma.bedActivity.createMany({
+    data: bedActivities,
+  });
 
-await prisma.alertLogs.createMany({
-  data: alertLogs,
-});
+  await prisma.alertLogs.createMany({
+    data: alertLogs,
+  });
 
-console.log(`✅ BedActivity seeded: ${bedActivities.length}`);
-console.log(`✅ AlertLogs seeded: ${alertLogs.length}`);
-console.log("🎉 Demo date: 2026-09-15");
+  console.log(`✅ BedActivity seeded: ${bedActivities.length}`);
+  console.log(`✅ AlertLogs seeded: ${alertLogs.length}`);
+
+  console.log("");
+  console.log("📊 Expected analytics for 2026-09-15:");
+  console.log("GOOD:");
+  console.log("  BED-1  = 15h30m");
+  console.log("  BED-2  = 14h");
+  console.log("  BED-3  = 13h");
+  console.log("  BED-4  = 12h");
+
+  console.log("MODERATE:");
+  console.log("  BED-5  = 10h30m");
+  console.log("  BED-6  = 10h");
+  console.log("  BED-7  = 9h30m");
+  console.log("  BED-8  = 9h");
+
+  console.log("POOR:");
+  console.log("  BED-9  = 8h");
+  console.log("  BED-10 = 7h30m");
+  console.log("  BED-11 = 7h");
+  console.log("  BED-12 = 6h30m");
+
+  console.log("");
+  console.log("🎉 SafeBed deterministic demo seed complete");
 }
 
 main()
-  .catch(console.error)
+  .catch((error) => {
+    console.error("❌ Seed failed:", error);
+    throw error;
+  })
   .finally(async () => {
     await prisma.$disconnect();
   });
